@@ -1,0 +1,91 @@
+/* Login.css */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: #f2f2f2;
+  padding: 20px;
+}
+
+.login-box {
+  background: white;
+  padding: 30px 25px;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-box h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.login-box input {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 15px;
+  font-family: inherit;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+
+.login-box input:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+.login-box button {
+  width: 100%;
+  padding: 12px 15px;
+  background: #007bff;
+  border: none;
+  color: white;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.login-box button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.login-box {
+  text-align: left; /* Force left alignment */
+}
+
+
+.login-box button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.sso-button {
+  background: #343a40;
+  margin-top: 10px;
+}
+
+.sso-button:hover {
+  background: #1d2124;
+}
+
+.divider {
+  text-align: center;
+  margin: 15px 0;
+  color: #777;
+  font-size: 14px;
+}
+
+.error {
+  color: red;
+  font-size: 13px;
+  margin-bottom: 10px;
+  text-align: center;
+}
