@@ -10,7 +10,7 @@ function Movies() {
 
   const loadMovies = async () => {
     const token = localStorage.getItem("token");
-    const res = await fetch("http://localhost:5091/api/movies", {
+    const res = await fetch("http://localhost:5091/api/v1/movies", {
       headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
@@ -19,7 +19,7 @@ function Movies() {
 
   const addMovie = async () => {
     const token = localStorage.getItem("token");
-    await fetch("http://localhost:5091/api/movies", {
+    await fetch("http://localhost:5091/api/v1/movies", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
