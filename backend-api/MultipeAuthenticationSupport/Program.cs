@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using MovieListingSystem.Application.Interfaces;
+using MovieListingSystem.Application.Services;
 using MultipeAuthenticationSupport.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
@@ -139,6 +141,8 @@ public class Program
                       .AllowAnyMethod();
             });
         });
+
+        builder.Services.AddScoped<IMovieService, MovieService>();
 
         var app = builder.Build();
 

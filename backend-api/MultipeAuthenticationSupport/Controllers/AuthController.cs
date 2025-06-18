@@ -6,7 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace MultipeAuthenticationSupport.Controllers;
+namespace MovieListingSystem.API.Controllers;
 
 [ApiController]
 [ApiVersion("1.0")]

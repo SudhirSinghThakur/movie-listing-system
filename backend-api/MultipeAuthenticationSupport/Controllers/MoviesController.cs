@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using MultipeAuthenticationSupport.Data;
-using MultipeAuthenticationSupport.Models;
+﻿namespace MovieListingSystem.API.Controllers;
 
-namespace MultipeAuthenticationSupport.Controllers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using MovieListingSystem.Application.DTOs;
+using MovieListingSystem.Application.Interfaces;
 
 [Authorize(AuthenticationSchemes = "MultiScheme")]
 [ApiController]
@@ -11,44 +11,48 @@ namespace MultipeAuthenticationSupport.Controllers;
 [Route("api/v{version:apiVersion}/movies")]
 public class MoviesV1Controller : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IMovieService _movieService;
 
-    public MoviesV1Controller(AppDbContext context)
+    public MoviesV1Controller(IMovieService movieService)
     {
-        _context = context;
+        _movieService = movieService;
     }
 
     [HttpGet]
-    public IActionResult GetMovies() => Ok(_context.Movies.ToList());
+    public async Task<IActionResult> GetMovies()
+    {
+        var movies = await _movieService.GetAllAsync();
+        return Ok(movies);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetMovie(int id)
+    {
+        var movie = await _movieService.GetByIdAsync(id);
+        if (movie == null) return NotFound();
+        return Ok(movie);
+    }
 
     [HttpPost]
-    public IActionResult AddMovie([FromBody] Movie movie)
+    public async Task<IActionResult> AddMovie([FromBody] MovieDto movieDto)
     {
-        _context.Movies.Add(movie);
-        _context.SaveChanges();
-        return Created($"api/v1/movies/{movie.Id}", movie);
+        var addedMovie = await _movieService.AddAsync(movieDto);
+        return CreatedAtAction(nameof(GetMovie), new { id = addedMovie.Id }, addedMovie);
     }
 
     [HttpPut("{id}")]
-    public IActionResult UpdateMovie(int id, [FromBody] Movie movie)
+    public async Task<IActionResult> UpdateMovie(int id, [FromBody] MovieDto movieDto)
     {
-        var existing = _context.Movies.Find(id);
-        if (existing == null) return NotFound();
-
-        existing.Title = movie.Title;
-        existing.Genre = movie.Genre;
-        _context.SaveChanges();
+        var updated = await _movieService.UpdateAsync(id, movieDto);
+        if (!updated) return NotFound();
         return NoContent();
     }
 
     [HttpDelete("{id}")]
-    public IActionResult DeleteMovie(int id)
+    public async Task<IActionResult> DeleteMovie(int id)
     {
-        var movie = _context.Movies.Find(id);
-        if (movie == null) return NotFound();
-
-        _context.Movies.Remove(movie);
-        _context.SaveChanges();
+        var deleted = await _movieService.DeleteAsync(id);
+        if (!deleted) return NotFound();
         return NoContent();
     }
 }
