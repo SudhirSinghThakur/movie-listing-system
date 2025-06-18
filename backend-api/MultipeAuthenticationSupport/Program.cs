@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using MultipeAuthenticationSupport.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using System.Text.Json;
 
 public class Program
 {
@@ -13,37 +14,38 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        // Add Services
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen(c =>
+        builder.Services.AddSwaggerGen(setup =>
         {
-            c.SwaggerDoc("v1", new() { Title = "Movie API", Version = "v1" });
-
-            // 🔐 Swagger JWT Bearer Auth
-            c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            setup.SwaggerDoc("v1", new() { Title = "Movie API", Version = "v1" });
+            setup.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
             {
-                Description = "Enter only JWT token (no 'Bearer ' prefix). Example: `eyJ...`",
+                Description = "JWT only (no 'Bearer ' prefix). Example: `eyJ...`",
                 Name = "Authorization",
                 In = Microsoft.OpenApi.Models.ParameterLocation.Header,
                 Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
                 Scheme = "Bearer"
             });
 
-            c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+            setup.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
             {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
                 {
-                    new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                    {
-                        Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                        {
-                            Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                            Id = "Bearer"
-                        }
-                    },
-                    new string[] {}
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
                 }
+            },
+            Array.Empty<string>()
+        }
             });
         });
+
+        // Versioning
         builder.Services.AddApiVersioning(options =>
         {
             options.DefaultApiVersion = new ApiVersion(1, 0);
@@ -52,10 +54,35 @@ public class Program
             options.ApiVersionReader = new UrlSegmentApiVersionReader();
         });
 
-        builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("MovieDb"));
+        // CORS
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowFrontend", policy =>
+            {
+                policy.WithOrigins("http://localhost:3000")
+                      .AllowAnyHeader()
+                      .AllowAnyMethod();
+            });
+        });
 
+        // EF Core
+        builder.Services.AddDbContext<AppDbContext>(options =>
+            options.UseInMemoryDatabase("MovieDb"));
+
+        // Health Checks
+        builder.Services.AddHealthChecks()
+            .AddDbContextCheck<AppDbContext>("Database");
+
+        builder.Services.AddHealthChecksUI(options =>
+        {
+            options.SetEvaluationTimeInSeconds(15);
+            options.AddHealthCheckEndpoint("Movie API", "/health");
+            options.SetHeaderText("🎬 Movie Listing System Health");
+        }).AddInMemoryStorage();
+
+        // Authentication: Multi-scheme
         builder.Services.AddAuthentication("MultiScheme")
-            .AddPolicyScheme("MultiScheme", "Choose scheme based on token", options =>
+            .AddPolicyScheme("MultiScheme", "Token-based scheme selector", options =>
             {
                 options.ForwardDefaultSelector = context =>
                 {
@@ -65,13 +92,11 @@ public class Program
                     try
                     {
                         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
-                        Console.WriteLine($"🔁 Issuer detected: {jwt.Issuer}");
-
+                        Console.WriteLine($"🔎 Issuer: {jwt.Issuer}");
                         return jwt.Issuer.Contains("auth0.com") ? "SSO" : "Local";
                     }
-                    catch (Exception ex)
+                    catch
                     {
-                        Console.WriteLine("❌ Failed to parse token: " + ex.Message);
                         return "Local";
                     }
                 };
@@ -85,20 +110,8 @@ public class Program
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = builder.Configuration["Jwt:Issuer"],
                     ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-                };
-                options.Events = new JwtBearerEvents
-                {
-                    OnAuthenticationFailed = context =>
-                    {
-                        Console.WriteLine("❌ Local Auth failed: " + context.Exception.Message);
-                        return Task.CompletedTask;
-                    },
-                    OnTokenValidated = context =>
-                    {
-                        Console.WriteLine("✅ Local Token validated");
-                        return Task.CompletedTask;
-                    }
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
                 };
             })
             .AddJwtBearer("SSO", options =>
@@ -108,47 +121,19 @@ public class Program
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = "https://sudhirthakur.eu.auth0.com/",
                     ValidateAudience = true,
+                    ValidIssuer = "https://sudhirthakur.eu.auth0.com/",
                     ValidAudience = "https://moviesystem/api",
                     ValidateLifetime = true
-                };
-                options.Events = new JwtBearerEvents
-                {
-                    OnAuthenticationFailed = context =>
-                    {
-                        Console.WriteLine("❌ SSO Auth failed: " + context.Exception.Message);
-                        return Task.CompletedTask;
-                    },
-                    OnTokenValidated = context =>
-                    {
-                        Console.WriteLine("✅ SSO Token validated");
-                        return Task.CompletedTask;
-                    }
                 };
             });
 
         builder.Services.AddAuthorization();
 
-        builder.Services.AddCors(options =>
-        {
-            options.AddPolicy("AllowFrontend", policy =>
-            {
-                policy.WithOrigins("http://localhost:3000")
-                      .AllowAnyHeader()
-                      .AllowAnyMethod();
-            });
-        });
-
         var app = builder.Build();
 
+        // Middlewares
         app.UseCors("AllowFrontend");
-
-        app.Use(async (context, next) =>
-        {
-            Console.WriteLine($"➡️ Request: {context.Request.Method} {context.Request.Path}");
-            await next();
-        });
 
         if (app.Environment.IsDevelopment())
         {
@@ -159,12 +144,45 @@ public class Program
         app.UseHttpsRedirection();
         app.UseAuthentication();
         app.UseAuthorization();
+
+        // Logging middleware
+        app.Use(async (context, next) =>
+        {
+            Console.WriteLine($"➡️  {context.Request.Method} {context.Request.Path}");
+            await next();
+        });
+
+        // Routes
         app.MapControllers();
 
+        // Health Check Endpoints
+        app.MapHealthChecks("/health", new HealthCheckOptions
+        {
+            ResponseWriter = async (context, report) =>
+            {
+                context.Response.ContentType = "application/json";
+                var result = JsonSerializer.Serialize(new
+                {
+                    status = report.Status.ToString(),
+                    checks = report.Entries.Select(e => new
+                    {
+                        name = e.Key,
+                        status = e.Value.Status.ToString(),
+                        error = e.Value.Exception?.Message,
+                        duration = e.Value.Duration.ToString()
+                    })
+                });
+                await context.Response.WriteAsync(result);
+            }
+        });
+
+        app.MapHealthChecksUI();
+
+        // Seed data
         using (var scope = app.Services.CreateScope())
         {
-            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            DbSeeder.Seed(context);
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            DbSeeder.Seed(dbContext);
         }
 
         app.Run();
