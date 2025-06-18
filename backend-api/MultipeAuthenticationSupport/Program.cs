@@ -188,7 +188,18 @@ public class Program
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             DbSeeder.Seed(dbContext);
         }
-        app.MapGet("/", () => Results.Ok("🎬 Movie API is up and running!"));
-        app.Run();
+        app.MapGet("/", () => Results.Ok("Movie API is up and running!"));
+        app.MapGet("/ping", () => Results.Ok("Pong!"));
+
+        try
+        {
+            app.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"App crashed: {ex.Message}");
+            throw;
+        }
+
     }
 }
