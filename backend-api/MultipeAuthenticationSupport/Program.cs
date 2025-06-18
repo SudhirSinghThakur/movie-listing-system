@@ -73,13 +73,6 @@ public class Program
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("Database");
 
-        builder.Services.AddHealthChecksUI(options =>
-        {
-            options.SetEvaluationTimeInSeconds(15);
-            options.AddHealthCheckEndpoint("Movie API", "/health");
-            options.SetHeaderText("🎬 Movie Listing System Health");
-        }).AddInMemoryStorage();
-
         // Authentication: Multi-scheme
         builder.Services.AddAuthentication("MultiScheme")
             .AddPolicyScheme("MultiScheme", "Token-based scheme selector", options =>
@@ -180,7 +173,7 @@ public class Program
             }
         });
 
-        app.MapHealthChecksUI();
+       
         app.UseExceptionHandler("/error");
         // Seed data
         using (var scope = app.Services.CreateScope())
