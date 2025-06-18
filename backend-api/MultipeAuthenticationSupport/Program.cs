@@ -188,7 +188,7 @@ public class Program
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             DbSeeder.Seed(dbContext);
         }
-
+        app.MapGet("/", () => Results.Ok("🎬 Movie API is up and running!"));
         app.Run();
     }
 }
