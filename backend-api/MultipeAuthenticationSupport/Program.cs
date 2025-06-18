@@ -130,6 +130,10 @@ public class Program
 
         builder.Services.AddAuthorization();
 
+
+        builder.Logging.ClearProviders();
+        builder.Logging.AddConsole();
+
         var app = builder.Build();
 
         // Middlewares
@@ -177,7 +181,7 @@ public class Program
         });
 
         app.MapHealthChecksUI();
-
+        app.UseExceptionHandler("/error");
         // Seed data
         using (var scope = app.Services.CreateScope())
         {
